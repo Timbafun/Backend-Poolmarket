@@ -1,39 +1,29 @@
-import { pool } from "../db.js";
+import pool from '../db.js';
 
-// Registrar voto
-export const registerVote = async (req, res) => {
-  const { user_id, candidate_id } = req.body;
-
+export const getVotes = async (req, res) => {
+  const { candidateId } = req.params;
   try {
-    const alreadyVoted = await pool.query(
-      "SELECT * FROM votes WHERE user_id = $1",
-      [user_id]
+    const result = await pool.query(
+      'SELECT COUNT(*) FROM votes WHERE candidate_id=$1',
+      [candidateId]
     );
-
-    if (alreadyVoted.rows.length > 0)
-      return res.status(400).json({ error: "Usuário já votou." });
-
-    await pool.query("INSERT INTO votes (user_id, candidate_id) VALUES ($1, $2)", [
-      user_id,
-      candidate_id,
-    ]);
-
-    await pool.query("UPDATE candidates SET votes = votes + 1 WHERE id = $1", [candidate_id]);
-
-    res.json({ message: "Voto registrado com sucesso!" });
+    res.json({ votes: parseInt(result.rows[0].count) });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Erro ao registrar voto." });
+    res.status(500).json({ message: 'Erro ao buscar votos' });
   }
 };
 
-// Contagem de votos
-export const getVoteCount = async (req, res) => {
+export const voteCandidate = async (req, res) => {
+  const { userId, candidateId } = req.body;
   try {
-    const result = await pool.query("SELECT * FROM candidates ORDER BY id ASC");
-    res.json(result.rows);
+    const vote = await pool.query(
+      'INSERT INTO votes (user_id, candidate_id) VALUES ($1,$2) RETURNING *',
+      [userId, candidateId]
+    );
+    res.status(201).json({ message: 'Voto registrado', vote: vote.rows[0] });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Erro ao buscar votos." });
+    res.status(500).json({ message: 'Erro ao registrar voto' });
   }
 };
