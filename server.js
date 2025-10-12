@@ -1,18 +1,17 @@
-const express = require('express');
-const cors = require('cors');
-const bodyParser = require('body-parser');
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+import userRoutes from "./routes/userRoutes.js";
 
-const userRoutes = require('./routes/userRoutes');
-const voteRoutes = require('./routes/voteRoutes');
+dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
-
 app.use(cors());
-app.use(bodyParser.json());
+app.use(express.json());
 
-app.use('/users', userRoutes);
-app.use('/votes', voteRoutes);
+app.use("/api", userRoutes);
+
+const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
