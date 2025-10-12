@@ -1,26 +1,17 @@
-import pool from '../db.js';
+const { users } = require('../db');
 
-export const registerUser = async (req, res) => {
+exports.registerUser = (req, res) => {
   const { nome, email, telefone, cpf } = req.body;
 
-  try {
-    const existing = await pool.query(
-      'SELECT * FROM users WHERE cpf = $1 OR email = $2',
-      [cpf, email]
-    );
-
-    if (existing.rows.length > 0) {
-      return res.status(400).json({ message: 'Usuário já cadastrado' });
-    }
-
-    const newUser = await pool.query(
-      'INSERT INTO users (nome, email, telefone, cpf) VALUES ($1,$2,$3,$4) RETURNING *',
-      [nome, email, telefone, cpf]
-    );
-
-    res.status(201).json({ message: 'Usuário cadastrado com sucesso', user: newUser.rows[0] });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Erro ao cadastrar usuário' });
+  // Verifica se o usuário já existe pelo CPF
+  const existingUser = users.find(user => user.cpf === cpf);
+  if (existingUser) {
+    return res.status(400).json({ message: 'Usuário já cadastrado' });
   }
+
+  // Adiciona o usuário
+  const newUser = { nome, email, telefone, cpf, hasVoted: false };
+  users.push(newUser);
+
+  res.status(201).json({ message: 'Usuário cadastrado com sucesso', user: newUser });
 };

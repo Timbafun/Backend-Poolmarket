@@ -1,29 +1,29 @@
-import pool from '../db.js';
+const { votes, users } = require('../db');
 
-export const getVotes = async (req, res) => {
-  const { candidateId } = req.params;
-  try {
-    const result = await pool.query(
-      'SELECT COUNT(*) FROM votes WHERE candidate_id=$1',
-      [candidateId]
-    );
-    res.json({ votes: parseInt(result.rows[0].count) });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Erro ao buscar votos' });
+exports.castVote = (req, res) => {
+  const { candidate, cpf } = req.body;
+
+  // Verifica se o usuário existe
+  const user = users.find(u => u.cpf === cpf);
+  if (!user) {
+    return res.status(400).json({ message: 'Usuário não encontrado' });
+  }
+
+  // Verifica se o usuário já votou
+  if (user.hasVoted) {
+    return res.status(400).json({ message: 'Usuário já votou' });
+  }
+
+  // Registra o voto
+  if (candidate === 'lula' || candidate === 'bolsonaro') {
+    votes[candidate] += 1;
+    user.hasVoted = true;
+    res.status(200).json({ message: 'Voto registrado com sucesso' });
+  } else {
+    res.status(400).json({ message: 'Candidato inválido' });
   }
 };
 
-export const voteCandidate = async (req, res) => {
-  const { userId, candidateId } = req.body;
-  try {
-    const vote = await pool.query(
-      'INSERT INTO votes (user_id, candidate_id) VALUES ($1,$2) RETURNING *',
-      [userId, candidateId]
-    );
-    res.status(201).json({ message: 'Voto registrado', vote: vote.rows[0] });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Erro ao registrar voto' });
-  }
+exports.getVotes = (req, res) => {
+  res.json(votes);
 };

@@ -1,8 +1,9 @@
-import express from 'express';
-import { getVotes, voteCandidate } from '../controllers/voteController.js';
+const express = require('express');
+const { castVote, getVotes } = require('../controllers/voteController');
+
 const router = express.Router();
 
-router.get('/:candidateId', getVotes);
-router.post('/', voteCandidate);
+router.post('/vote', castVote);
+router.get('/results', getVotes);
 
-export default router;
+module.exports = router;
