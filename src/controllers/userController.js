@@ -8,6 +8,7 @@ const generateToken = (id) => {
     });
 };
 
+// CRÍTICO: Mapeia snake_case do DB para camelCase do Frontend
 const mapUserToFrontend = (userDb) => {
     if (!userDb) return null;
 
@@ -17,32 +18,41 @@ const mapUserToFrontend = (userDb) => {
         email: userDb.email,
         telefone: userDb.telefone,
         cpf: userDb.cpf,
-        hasVoted: userDb.has_voted || false, 
+        hasVoted: userDb.has_voted || false, // CORREÇÃO: has_voted -> hasVoted
         votedFor: userDb.voted_for || null, 
         votedAt: userDb.voted_at || null
     };
 };
 
-// --- ROTAS (As outras funções mantêm o corpo que te passei anteriormente) ---
-
 /**
- * registerUser - Com Hash de Senha
+ * registerUser - Gera Token e Hasheia Senha (CORRETO)
  */
 export const registerUser = async (req, res) => {
-    // ... (Mantém o código de hash e inserção que te passei na última resposta)
-    // ... (Usa a senha criptografada)
-    // ... (Retorna o Token e o objeto mapeado)
+    const { nome, email, telefone, cpf, senha } = req.body;
+    try {
+        const existing = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
+        if (existing.rows.length > 0) { return res.status(400).json({ ok: false, message: "E-mail já cadastrado." }); }
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(senha, salt);
+        const result = await pool.query(
+            "INSERT INTO users (nome, email, telefone, cpf, senha, has_voted) VALUES ($1, $2, $3, $4, $5, FALSE) RETURNING *",
+            [nome, email, telefone, cpf, hashedPassword] 
+        );
+        const user = result.rows[0];
+        const frontendUser = mapUserToFrontend(user);
+        const token = generateToken(user.id); 
+        res.json({ ok: true, user: { ...frontendUser, token } }); 
+    } catch (err) {
+        console.error("Erro no registerUser:", err);
+        res.status(500).json({ ok: false, message: "Erro no servidor." });
+    }
 };
 
-
 /**
- * loginUser - CORREÇÃO CRÍTICA DE COMPATIBILIDADE DE SENHA
+ * loginUser - Resolve compatibilidade de senha e retorna Token (CORRETO)
  */
 export const loginUser = async (req, res) => {
     try {
-        // ... (Seu código de extração de campos e busca no DB mantido) ...
-
-        // Seu código de extração de campos e busca no DB...
         const rawEmail = req.body.email || req.body.emailLogin || req.body.userEmail || req.body.username || null;
         const rawCpf = req.body.cpf || req.body.CPF || req.body.cpfLogin || null;
         const rawSenha = req.body.senha || req.body.password || req.body.senhaLogin || req.body.pass || null;
@@ -54,33 +64,25 @@ export const loginUser = async (req, res) => {
         if (email) { result = await pool.query("SELECT * FROM users WHERE LOWER(email) = LOWER($1)", [email]); }
         if ((!result || result.rows.length === 0) && cpf) { result = await pool.query("SELECT * FROM users WHERE regexp_replace(cpf, '\\\\D','','g') = $1", [cpf]); }
         if (!result || result.rows.length === 0) { return res.status(401).json({ ok: false, message: "Credenciais inválidas." }); }
+
         const user = result.rows[0];
         let senhaCorreta = false;
         
-        // 🔑 CORREÇÃO CRÍTICA: Permite senhas em texto puro para usuários antigos.
+        // CORREÇÃO CRÍTICA: Prioriza texto puro para usuários antigos, depois tenta bcrypt
         if (user.senha === senha) {
             senhaCorreta = true;
         } else {
-            // Tenta bcrypt para senhas criptografadas (usuários novos)
             try {
                 senhaCorreta = await bcrypt.compare(senha, user.senha);
             } catch (err) {
-                // Ignore erros do bcrypt, apenas se a senha for hash
                 senhaCorreta = false;
             }
         }
-        // FIM DA CORREÇÃO CRÍTICA
+        if (!senhaCorreta) { return res.status(401).json({ ok: false, message: "Credenciais inválidas." }); }
 
-        if (!senhaCorreta) {
-            return res.status(401).json({ ok: false, message: "Credenciais inválidas." });
-        }
-
-        // Sucesso: Mapeia o usuário para o formato do Frontend e retorna o Token
         const frontendUser = mapUserToFrontend(user);
         const token = generateToken(user.id); 
-
         return res.json({ ok: true, user: { ...frontendUser, token } }); 
-
     } catch (err) {
         console.error("Erro no loginUser:", err);
         return res.status(500).json({ ok: false, message: "Erro no servidor." });
@@ -88,9 +90,48 @@ export const loginUser = async (req, res) => {
 };
 
 /**
- * castVote - Mantém o código que te passei anteriormente
+ * castVote - Rota protegida (CORRETO)
  */
 export const castVote = async (req, res) => {
-    // ... (Mantém o código de votação que te passei na última resposta)
-    // ... (Ele usa o mapUserToFrontend para garantir o camelCase)
+    const userId = req.user.id; 
+    const { candidate } = req.body; 
+
+    if (!candidate || (candidate !== 'lula' && candidate !== 'bolsonaro')) {
+        return res.status(400).json({ ok: false, message: "Candidato inválido." });
+    }
+
+    try {
+        const userResult = await pool.query(
+            "SELECT voted_for FROM users WHERE id = $1",
+            [userId]
+        );
+
+        if (userResult.rows.length === 0 || userResult.rows[0].voted_for) {
+            return res.status(400).json({ ok: false, message: "Você já votou." });
+        }
+
+        await pool.query(
+            "UPDATE users SET voted_for = $1, has_voted = TRUE, voted_at = NOW() WHERE id = $2",
+            [candidate, userId]
+        );
+        
+        const updatedUserResult = await pool.query(
+            "SELECT * FROM users WHERE id = $1",
+            [userId]
+        );
+        const updatedUser = updatedUserResult.rows[0];
+
+        const frontendUser = mapUserToFrontend(updatedUser);
+        const token = generateToken(updatedUser.id);
+
+        return res.json({ 
+            ok: true, 
+            message: "Voto registrado com sucesso.",
+            user: { ...frontendUser, token }
+        });
+
+    } catch (err) {
+        console.error("Erro no castVote:", err);
+        return res.status(500).json({ ok: false, message: "Erro no servidor." });
+    }
 };

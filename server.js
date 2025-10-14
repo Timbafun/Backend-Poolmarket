@@ -1,23 +1,33 @@
+// server.js (Localizado na raiz do Backend)
+
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import userRoutes from "./routes/userRoutes.js";
+// ✅ Caminho final para userRoutes (dentro de src)
+import userRoutes from "./src/routes/userRoutes.js";
+// ✅ Caminho final para db.js (dentro de src)
+import pool from "./src/db.js"; 
 
 dotenv.config();
 
 const app = express();
 
-// ✅ CORREÇÃO CORS: Configuração específica para permitir o acesso do seu frontend no Netlify
 const corsOptions = {
-    // ⚠️ DOMÍNIO OFICIAL DO SEU FRONTEND NO NETLIFY
-    origin: 'https://poolmarket1.netlify.app',
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-    credentials: true, // Importante para headers de autorização
-    optionsSuccessStatus: 204
+    origin: 'https://poolmarket1.netlify.app',
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    credentials: true,
+    optionsSuccessStatus: 204
 };
-app.use(cors(corsOptions)); // Aplica a configuração CORS
-
+app.use(cors(corsOptions)); 
 app.use(express.json());
+
+// Verifica a conexão do DB ao iniciar (Opcional, mas útil)
+app.use((req, res, next) => {
+    if (!pool) {
+        return res.status(500).send("Erro interno: Pool de DB não inicializado.");
+    }
+    next();
+});
 
 // Rotas
 app.use("/api", userRoutes);
@@ -25,5 +35,5 @@ app.use("/api", userRoutes);
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-    console.log(`Servidor rodando na porta ${PORT}`);
+    console.log(`Servidor rodando na porta ${PORT}`);
 });
