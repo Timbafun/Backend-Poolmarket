@@ -1,15 +1,15 @@
-import pg from "pg";
-import dotenv from "dotenv";
+// src/db.js
 
-dotenv.config();
+import pkg from 'pg';
+const { Pool } = pkg;
 
-const { Pool } = pg;
+// O Render fornece a connection string (DATABASE_URL) automaticamente.
+// Removemos o 'dotenv' para evitar o erro de inicialização.
 
-// Usa diretamente a connection string do Render (DATABASE_URL)
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
-    rejectUnauthorized: false, // necessário para conexões seguras na nuvem
+    rejectUnauthorized: false, // Necessário para conexões seguras na nuvem
   },
 });
 
