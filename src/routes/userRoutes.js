@@ -1,19 +1,22 @@
+// src/routes/userRoutes.js
+
 import express from "express";
-// ✅ ADIÇÃO 1: Importa a função de votação
 import { registerUser, loginUser, castVote } from "../controllers/userController.js";
-// ✅ ADIÇÃO 2: Importa o middleware de segurança (protect)
+import { generatePixCharge, handleWebhook } from "../controllers/paymentController.js"; 
 import { protect } from "../middleware/authMiddleware.js"; 
 
 const router = express.Router();
 
-// rota de cadastro (mantida)
 router.post("/register", registerUser);
-
-// rota de login (mantida)
 router.post("/login", loginUser);
 
-// 🔑 ADIÇÃO CRÍTICA: Rota de votação. 
-// O middleware 'protect' valida o token antes de chamar 'castVote'.
+// ROTA ANTIGA DE VOTO (Pode ser removida, mas é mantida por precaução)
 router.post("/vote", protect, castVote); 
+
+// ✅ ROTA 1: Inicia o processo de voto e Gera o PIX (Protegida)
+router.post("/generate-pix", protect, generatePixCharge); 
+
+// ✅ ROTA 2: Recebe a notificação do PagSeguro (NÃO PROTEGIDA)
+router.post("/webhook/pagseguro", handleWebhook); 
 
 export default router;
