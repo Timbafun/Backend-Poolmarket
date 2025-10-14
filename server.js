@@ -7,15 +7,15 @@ dotenv.config();
 
 const app = express();
 
-// **AJUSTE AQUI:** Configuração CORS específica para o seu frontend
+// ✅ CORREÇÃO CORS: Configuração específica para permitir o acesso do seu frontend no Netlify
 const corsOptions = {
-    // Permite explicitamente requisições de PoolMarket no Netlify
+    // ⚠️ DOMÍNIO OFICIAL DO SEU FRONTEND NO NETLIFY
     origin: 'https://poolmarket1.netlify.app',
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-    credentials: true, // Necessário se você estiver usando cookies ou headers de autorização
-    optionsSuccessStatus: 204 // Para o "preflight request" (OPTIONS)
+    credentials: true, // Importante para headers de autorização
+    optionsSuccessStatus: 204
 };
-app.use(cors(corsOptions));
+app.use(cors(corsOptions)); // Aplica a configuração CORS
 
 app.use(express.json());
 
