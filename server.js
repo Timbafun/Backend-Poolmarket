@@ -7,8 +7,8 @@ import './src/db.js'; // Importa a conexão com o banco de dados
 
 const app = express();
 
-// A URL do seu Frontend no Netlify (corrigida do erro CORS)
-const frontendUrl = 'https://68ee96618dacf8f0fde870ea--poolmarket1.netlify.app'; 
+// Usamos a URL principal e estável do Netlify para evitar futuros erros de CORS.
+const frontendUrl = 'https://poolmarket1.netlify.app'; 
 
 // Configuração do CORS
 const corsOptions = {
