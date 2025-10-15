@@ -7,12 +7,26 @@ import './src/db.js'; // Importa a conexão com o banco de dados
 
 const app = express();
 
-// Usamos a URL principal e estável do Netlify para evitar futuros erros de CORS.
-const frontendUrl = 'https://poolmarket1.netlify.app'; 
+// Lista de origens permitidas (seu domínio principal e o subdomínio do Netlify)
+const allowedOrigins = [
+    'https://poolmarket.fun',
+    'https://poolmarket1.netlify.app'
+]; 
 
 // Configuração do CORS
 const corsOptions = {
-    origin: frontendUrl,
+    // Permite qualquer origem que esteja na lista allowedOrigins
+    origin: (origin, callback) => {
+        // Permite requisições sem 'origin' (como apps ou ferramentas de teste)
+        if (!origin) return callback(null, true); 
+        
+        if (allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            // Se a origem não for permitida, retorna o erro no console
+            callback(new Error('Not allowed by CORS')); 
+        }
+    },
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
     optionsSuccessStatus: 204,
