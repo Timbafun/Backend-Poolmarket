@@ -17,13 +17,13 @@ const allowedOrigins = [
 const corsOptions = {
     // Permite qualquer origem que esteja na lista allowedOrigins
     origin: (origin, callback) => {
-        // Permite requisições sem 'origin' (como apps ou ferramentas de teste)
+        // Permite requisições sem 'origin' (como ferramentas de teste)
         if (!origin) return callback(null, true); 
         
         if (allowedOrigins.indexOf(origin) !== -1) {
             callback(null, true);
         } else {
-            // Se a origem não for permitida, retorna o erro no console
+            // Se a origem não for permitida, retorna o erro
             callback(new Error('Not allowed by CORS')); 
         }
     },
