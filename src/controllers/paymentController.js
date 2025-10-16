@@ -3,24 +3,39 @@
 import pool from '../db.js';
 import axios from 'axios';
 
-// ✅ CORREÇÃO AQUI: A URL de base agora é lida do Render.
-// O valor padrão ('https://api.pagseguro.com') será usado se a variável não existir.
+// URL de base da API lida da variável de ambiente (Render)
 const PAGSEGURO_API_BASE_URL = process.env.PAGSEGURO_API_URL || 'https://api.pagseguro.com'; 
 
-// Headers para autenticação (Seu token do Render)
 const PAGSEGURO_HEADERS = {
     'Authorization': `Bearer ${process.env.PAGSEGURO_TOKEN}`,
     'Content-Type': 'application/json',
 };
 
+// Dados mockados para satisfazer a homologação do PagSeguro (Telefone e Endereço)
+const MOCK_PHONE = { 
+    country: "55", 
+    area: "11", 
+    number: "999999999", // Número de teste
+    type: "MOBILE" 
+};
+
+const MOCK_ADDRESS = {
+    street: "Rua de Teste PagBank",
+    number: "100",
+    locality: "Bairro de Teste",
+    city: "Sao Paulo",
+    region_code: "SP",
+    country: "BRA",
+    postal_code: "01311000"
+};
+
 // 1. Rota protegida: Gera o PIX e o QR Code (VALOR FIXO DE R$ 1,00)
 export const generatePixCharge = async (req, res) => {
-    // O valor (amount) é fixado em 1.00, ignorando o que pode vir do Frontend
     const VOTE_AMOUNT = 1.00;
     const { candidate } = req.body;
-    const userId = req.user.id; // Vindo do middleware 'protect'
+    const userId = req.user.id;
     const userEmail = req.user.email;
-    const userCpf = req.user.cpf ? req.user.cpf.replace(/\D/g, "") : null; // Limpa o CPF
+    const userCpf = req.user.cpf ? req.user.cpf.replace(/\D/g, "") : null;
     const valueInCents = Math.round(VOTE_AMOUNT * 100);
 
     // 1. Verificação de Voto e PIX Pendente
@@ -30,14 +45,12 @@ export const generatePixCharge = async (req, res) => {
             return res.status(400).json({ ok: false, message: "Você já votou." });
         }
         
-        // Verifica se já existe uma transação pendente para este usuário
         const existingTransaction = await pool.query(
             "SELECT qr_code_base66, qr_code_pix FROM transactions WHERE user_id = $1 AND status = 'PENDING'",
             [userId]
         );
 
         if (existingTransaction.rows.length > 0) {
-            // Se existir, retorna o PIX pendente para o Frontend
             return res.status(200).json({ 
                 ok: true, 
                 message: "Transação pendente já existe.",
@@ -55,25 +68,29 @@ export const generatePixCharge = async (req, res) => {
         reference_id: `VOTO-${userId}-${Date.now()}`, 
         customer: {
             email: userEmail,
-            tax_id: userCpf 
+            tax_id: userCpf,
+            // ✅ CORREÇÃO PARA HOMOLOGAÇÃO: Adicionando telefones mockados
+            phones: [MOCK_PHONE] 
         },
         items: [{
             name: `Voto em ${candidate} (R$ ${VOTE_AMOUNT.toFixed(2)})`,
             quantity: 1,
-            unit_amount: valueInCents, // R$ 1,00 em centavos
+            unit_amount: valueInCents,
         }],
+        // ✅ CORREÇÃO PARA HOMOLOGAÇÃO: Adicionando endereço mockado
+        shipping: {
+            address: MOCK_ADDRESS
+        },
         qr_codes: [{
             amount: { value: valueInCents },
             expiration_date: new Date(Date.now() + 15 * 60 * 1000).toISOString(), 
         }],
         notification_urls: [
-            process.env.PAGSEGURO_WEBHOOK_URL // Pega a URL do Render
+            process.env.PAGSEGURO_WEBHOOK_URL
         ]
     };
 
     try {
-        // Faz a requisição para a API PagSeguro para criar a ordem
-        // ✅ Endpoint corrigido para usar a nova variável: ${PAGSEGURO_API_BASE_URL}
         const response = await axios.post(`${PAGSEGURO_API_BASE_URL}/orders`, orderData, {
             headers: PAGSEGURO_HEADERS
         });
@@ -81,9 +98,8 @@ export const generatePixCharge = async (req, res) => {
         const order = response.data;
         const qrCodeData = order.qr_codes[0];
         
-        // ✅ CORREÇÃO CRÍTICA: O PagSeguro retorna o link da imagem e o código PIX no campo 'payload'
         const pixBase64Url = qrCodeData.links.find(link => link.media === 'image/png').href;
-        const pixCode = qrCodeData.payload; // O código "Copia e Cola"
+        const pixCode = qrCodeData.payload;
 
         // 3. Salva a transação PENDENTE no DB
         await pool.query(
@@ -103,9 +119,7 @@ export const generatePixCharge = async (req, res) => {
         });
 
     } catch (error) {
-        // Loga o erro exato que o PagSeguro retornou
         console.error("Erro ao gerar PIX (PagSeguro):", error.response ? error.response.data : error.message);
-        // Retorna a mensagem de erro que aparece no Frontend
         return res.status(500).json({ ok: false, message: "Falha ao gerar o PIX. Verifique as credenciais no Render." });
     }
 };
@@ -120,7 +134,6 @@ export const handleWebhook = async (req, res) => {
     }
     
     try {
-        // ✅ Endpoint corrigido para usar a nova variável: ${PAGSEGURO_API_BASE_URL}
         const response = await axios.get(`${PAGSEGURO_API_BASE_URL}/orders/${orderId}`, {
             headers: PAGSEGURO_HEADERS
         });
