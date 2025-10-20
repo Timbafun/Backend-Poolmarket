@@ -3,7 +3,6 @@
 import pool from '../db.js';
 import axios from 'axios';
 
-// URL de base da API lida da variável de ambiente (Render)
 const PAGSEGURO_API_BASE_URL = process.env.PAGSEGURO_API_URL || 'https://api.pagseguro.com'; 
 
 const PAGSEGURO_HEADERS = {
@@ -15,7 +14,7 @@ const PAGSEGURO_HEADERS = {
 const MOCK_PHONE = { 
     country: "55", 
     area: "11", 
-    number: "999999999", // Número de teste
+    number: "999999999", 
     type: "MOBILE" 
 };
 
@@ -29,13 +28,15 @@ const MOCK_ADDRESS = {
     postal_code: "01311000"
 };
 
+// CPF DE TESTE VÁLIDO PARA SANDBOX, GARANTINDO QUE NÃO É O MESMO DA CONTA PAGSEGURO
+const MOCK_CPF = "11111111111"; 
+
 // 1. Rota protegida: Gera o PIX e o QR Code (VALOR FIXO DE R$ 1,00)
 export const generatePixCharge = async (req, res) => {
     const VOTE_AMOUNT = 1.00;
     const { candidate } = req.body;
     const userId = req.user.id;
     const userEmail = req.user.email;
-    const userCpf = req.user.cpf ? req.user.cpf.replace(/\D/g, "") : null;
     const valueInCents = Math.round(VOTE_AMOUNT * 100);
 
     // 1. Verificação de Voto e PIX Pendente
@@ -68,8 +69,7 @@ export const generatePixCharge = async (req, res) => {
         reference_id: `VOTO-${userId}-${Date.now()}`, 
         customer: {
             email: userEmail,
-            tax_id: userCpf,
-            // ✅ CORREÇÃO PARA HOMOLOGAÇÃO: Adicionando telefones mockados
+            tax_id: MOCK_CPF, // ✅ CORREÇÃO: Usando CPF mockado de teste
             phones: [MOCK_PHONE] 
         },
         items: [{
@@ -77,7 +77,6 @@ export const generatePixCharge = async (req, res) => {
             quantity: 1,
             unit_amount: valueInCents,
         }],
-        // ✅ CORREÇÃO PARA HOMOLOGAÇÃO: Adicionando endereço mockado
         shipping: {
             address: MOCK_ADDRESS
         },
