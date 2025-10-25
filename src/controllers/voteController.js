@@ -21,7 +21,7 @@ const getVotes = async (req, res) => {
 
         res.status(200).json(votes);
     } catch (error) {
-        console.error("ERRO na QUERY SQL de VOTOS:", error.message);
+        console.error("ERRO na QUERY SQL de VOTOS/PIX (500):", error.message);
         res.status(500).json({ message: "Erro interno do servidor ao carregar votos." });
     }
 };
