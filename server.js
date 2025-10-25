@@ -1,29 +1,28 @@
-// server.js
-
 import express from 'express';
 import cors from 'cors';
 import userRoutes from './src/routes/userRoutes.js'; 
-import './src/db.js'; // Importa a conexão com o banco de dados
+import './src/db.js';
+import { generatePixCharge, handleWebhook } from './src/controllers/paymentController.js'; 
+import { authMiddleware } from './src/middleware/authMiddleware.js'; 
+import { getVotes, getCandidates } from './src/controllers/voteController.js'; 
 
 const app = express();
 
-// Lista de origens permitidas (seu domínio principal e o subdomínio do Netlify)
 const allowedOrigins = [
     'https://poolmarket.fun',
-    'https://poolmarket.netlify.app'
+    'https://poolmarket.netlify.app',
+    'http://localhost:3000'
 ]; 
 
-// Configuração do CORS
 const corsOptions = {
-    // Permite qualquer origem que esteja na lista allowedOrigins
     origin: (origin, callback) => {
-        // Permite requisições sem 'origin' (como ferramentas de teste)
         if (!origin) return callback(null, true); 
         
+        if (origin.endsWith('netlify.app')) return callback(null, true);
+
         if (allowedOrigins.indexOf(origin) !== -1) {
             callback(null, true);
         } else {
-            // Se a origem não for permitida, retorna o erro
             callback(new Error('Not allowed by CORS')); 
         }
     },
@@ -33,18 +32,26 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.use(express.json()); // Middleware para interpretar JSON
+app.use(express.json());
 
-// Rota de teste simples (opcional)
 app.get('/', (req, res) => {
     res.send('PoolMarket Backend está funcionando!');
 });
 
-// Rotas da Aplicação
+// Rotas de Usuário (login, cadastro, etc.)
 app.use('/api', userRoutes);
 
-// O Render fornece a variável de ambiente PORT. Se não houver, usa 5000 como padrão.
-const PORT = process.env.PORT || 5000; 
+// Rotas de Votos e Placar (A ROTA QUE ESTAVA FALTANDO E CAUSANDO 404/SYNTAX ERROR)
+app.get('/api/votes', getVotes); 
+app.get('/api/candidates', getCandidates); 
+
+// Rotas de Pagamento PIX
+app.post('/api/generate-pix', authMiddleware, generatePixCharge);
+
+// Rota de Webhook do PagSeguro (Não precisa de authMiddleware)
+app.post('/api/webhook/pagseguro', handleWebhook);
+
+const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
     console.log(`Servidor rodando na porta ${PORT}`);

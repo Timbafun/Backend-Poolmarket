@@ -1,29 +1,41 @@
-const { votes, users } = require('../db');
+import pool from '../db.js';
 
-exports.castVote = (req, res) => {
-  const { candidate, cpf } = req.body;
+// Função que o frontend usa para carregar os votos iniciais e o placar
+export const getVotes = async (req, res) => {
+    try {
+        // Conta os votos pagos (status 'PAID') para cada candidato
+        const voteCounts = await pool.query(`
+            SELECT 
+                candidate_voted, 
+                COUNT(*) AS count 
+            FROM 
+                transactions 
+            WHERE 
+                status = 'PAID' 
+            GROUP BY 
+                candidate_voted;
+        `);
 
-  // Verifica se o usuário existe
-  const user = users.find(u => u.cpf === cpf);
-  if (!user) {
-    return res.status(400).json({ message: 'Usuário não encontrado' });
-  }
+        // Formata os resultados para o frontend (Ex: { lula: 10, bolsonaro: 5 })
+        const votes = voteCounts.rows.reduce((acc, row) => {
+            acc[row.candidate_voted.toLowerCase()] = parseInt(row.count, 10);
+            return acc;
+        }, {});
 
-  // Verifica se o usuário já votou
-  if (user.hasVoted) {
-    return res.status(400).json({ message: 'Usuário já votou' });
-  }
-
-  // Registra o voto
-  if (candidate === 'lula' || candidate === 'bolsonaro') {
-    votes[candidate] += 1;
-    user.hasVoted = true;
-    res.status(200).json({ message: 'Voto registrado com sucesso' });
-  } else {
-    res.status(400).json({ message: 'Candidato inválido' });
-  }
+        res.status(200).json(votes);
+    } catch (error) {
+        console.error("Erro ao buscar contagem de votos:", error);
+        res.status(500).json({ message: "Erro interno ao carregar votos." });
+    }
 };
 
-exports.getVotes = (req, res) => {
-  res.json(votes);
+// Função para listar os candidatos (se o seu frontend precisar)
+export const getCandidates = async (req, res) => {
+    // Lista fixa, pois os candidatos não mudam. Você pode buscar isso do DB se tiver uma tabela de candidatos.
+    const candidates = [
+        { id: 1, name: 'Lula', key: 'lula' },
+        { id: 2, name: 'Bolsonaro', key: 'bolsonaro' }
+    ];
+    
+    res.status(200).json(candidates);
 };
