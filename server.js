@@ -38,6 +38,7 @@ app.get('/', (req, res) => {
     res.send('PoolMarket Backend está funcionando!');
 });
 
+// ROTAS DE VOTOS E PIX (DEVE VIR ANTES DE userRoutes)
 app.get('/api/votes', voteController.getVotes); 
 app.get('/api/candidates', voteController.getCandidates); 
 
@@ -45,6 +46,7 @@ app.post('/api/generate-pix', authMiddleware, generatePixCharge);
 
 app.post('/api/webhook/pagseguro', handleWebhook);
 
+// ROTAS DE USUÁRIO (DEVE VIR POR ÚLTIMO)
 app.use('/api', userRoutes);
 
 const PORT = process.env.PORT || 5000;
