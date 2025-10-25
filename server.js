@@ -3,8 +3,9 @@ import cors from 'cors';
 import userRoutes from './src/routes/userRoutes.js'; 
 import './src/db.js';
 import { generatePixCharge, handleWebhook } from './src/controllers/paymentController.js'; 
-// CORREÇÃO FINAL: Importa o "protect" (nome real da exportação) e o renomeia para "authMiddleware" (nome usado nas rotas)
+// Importação correta do authMiddleware (que exporta 'protect')
 import { protect as authMiddleware } from './src/middleware/authMiddleware.js'; 
+// Importação correta do voteController (que exporta 'getVotes' e 'getCandidates')
 import { getVotes, getCandidates } from './src/controllers/voteController.js'; 
 
 const app = express();
@@ -43,6 +44,7 @@ app.get('/', (req, res) => {
 app.use('/api', userRoutes);
 
 // Rotas de Votos e Placar
+// Usando as funções importadas diretamente
 app.get('/api/votes', getVotes); 
 app.get('/api/candidates', getCandidates); 
 
