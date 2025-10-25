@@ -1,24 +1,24 @@
-// src/db.js
+import { Pool } from 'pg';
 
-import pkg from 'pg';
-const { Pool } = pkg;
+const connectionString = process.env.DATABASE_URL;
 
-// O Render fornece a connection string (DATABASE_URL) automaticamente.
-// Removemos o 'dotenv' para evitar o erro de inicialização.
+if (!connectionString) {
+    throw new Error("A string de conexão com o banco de dados está faltando."); 
+}
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false, // Necessário para conexões seguras na nuvem
-  },
+    connectionString: connectionString,
+    ssl: {
+        rejectUnauthorized: false,
+    },
 });
 
 pool.on("connect", () => {
-  console.log("✅ Conexão com PostgreSQL estabelecida com sucesso!");
+    console.log("Conexão com PostgreSQL estabelecida com sucesso!");
 });
 
 pool.on("error", (err) => {
-  console.error("❌ Erro na conexão com PostgreSQL:", err);
+    console.error("Erro na conexão com PostgreSQL:", err);
 });
 
 export default pool;

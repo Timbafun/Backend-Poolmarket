@@ -17,11 +17,10 @@ const getVotes = async (req, res) => {
         const votes = voteCounts.rows.reduce((acc, row) => {
             acc[row.candidate_voted.toLowerCase()] = parseInt(row.count, 10);
             return acc;
-        }, { lula: 0, bolsonaro: 0 }); 
+        }, { lula: 0, bolsonaro: 0 });
 
         res.status(200).json(votes);
     } catch (error) {
-        console.error("Erro interno ao buscar contagem de votos:", error);
         res.status(500).json({ message: "Erro interno do servidor ao carregar votos." });
     }
 };
@@ -35,7 +34,6 @@ const getCandidates = (req, res) => {
     res.status(200).json(candidates);
 };
 
-// Exporta as funções como um objeto único (default)
 export default {
     getVotes,
     getCandidates

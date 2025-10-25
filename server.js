@@ -1,11 +1,9 @@
 import express from 'express';
 import cors from 'cors';
 import userRoutes from './src/routes/userRoutes.js'; 
-import './src/db.js';
+import pool from './src/db.js'; 
 import { generatePixCharge, handleWebhook } from './src/controllers/paymentController.js'; 
-// authMiddleware continua com importação nomeada correta
 import { protect as authMiddleware } from './src/middleware/authMiddleware.js'; 
-// NOVA IMPORTAÇÃO: Recebe o objeto completo 'voteController'
 import voteController from './src/controllers/voteController.js'; 
 
 const app = express();
@@ -40,18 +38,13 @@ app.get('/', (req, res) => {
     res.send('PoolMarket Backend está funcionando!');
 });
 
-// Rotas de Usuário (login, cadastro, etc.)
 app.use('/api', userRoutes);
 
-// Rotas de Votos e Placar
-// Chamando as funções do objeto importado
 app.get('/api/votes', voteController.getVotes); 
 app.get('/api/candidates', voteController.getCandidates); 
 
-// Rotas de Pagamento PIX
 app.post('/api/generate-pix', authMiddleware, generatePixCharge);
 
-// Rota de Webhook do PagSeguro (Não precisa de authMiddleware)
 app.post('/api/webhook/pagseguro', handleWebhook);
 
 const PORT = process.env.PORT || 5000;
