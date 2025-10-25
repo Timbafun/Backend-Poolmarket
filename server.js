@@ -5,7 +5,7 @@ import './src/db.js';
 import { generatePixCharge, handleWebhook } from './src/controllers/paymentController.js'; 
 // authMiddleware continua com importação nomeada correta
 import { protect as authMiddleware } from './src/middleware/authMiddleware.js'; 
-// Nova importação padrão (default) do voteController
+// NOVA IMPORTAÇÃO: Recebe o objeto completo 'voteController'
 import voteController from './src/controllers/voteController.js'; 
 
 const app = express();
@@ -44,7 +44,7 @@ app.get('/', (req, res) => {
 app.use('/api', userRoutes);
 
 // Rotas de Votos e Placar
-// Chamando as funções do objeto voteController
+// Chamando as funções do objeto importado
 app.get('/api/votes', voteController.getVotes); 
 app.get('/api/candidates', voteController.getCandidates); 
 

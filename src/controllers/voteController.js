@@ -17,7 +17,7 @@ const getVotes = async (req, res) => {
         const votes = voteCounts.rows.reduce((acc, row) => {
             acc[row.candidate_voted.toLowerCase()] = parseInt(row.count, 10);
             return acc;
-        }, { lula: 0, bolsonaro: 0 }); // Garantir chaves iniciais
+        }, { lula: 0, bolsonaro: 0 }); 
 
         res.status(200).json(votes);
     } catch (error) {
@@ -35,6 +35,7 @@ const getCandidates = (req, res) => {
     res.status(200).json(candidates);
 };
 
+// Exporta as funções como um objeto único (default)
 export default {
     getVotes,
     getCandidates
