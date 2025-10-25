@@ -21,7 +21,6 @@ export const registerUser = async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(senha, salt);
 
-        // ATENÇÃO: A query usa as colunas conforme a imagem do seu DB
         const result = await pool.query(
             'INSERT INTO users (name, email, cpf, telefone, senha, has_voted, voted_for) VALUES ($1, $2, $3, $4, $5, FALSE, NULL) RETURNING id, name, email',
             [name, email, cpf, telefone, hashedPassword]
