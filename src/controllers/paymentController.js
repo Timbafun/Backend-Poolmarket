@@ -72,7 +72,7 @@ export const generatePixCharge = async (req, res) => {
             return res.status(200).json({ 
                 ok: true, 
                 message: "Transação pendente já existe.",
-                qrCodeUrl: existingTransaction.rows[0].qr_code_base64,
+                qrCodeUrl: existingTransaction.rows[0].qr_code_base66,
                 pixCode: existingTransaction.rows[0].qr_code_pix
             });
         }
@@ -134,11 +134,18 @@ export const generatePixCharge = async (req, res) => {
 
     } catch (error) {
         console.error("Erro ao gerar PIX (PagSeguro):", error.response ? error.response.data : error.message);
-        const pagseguroError = error.response && error.response.data && error.response.data.error_messages ? 
-            error.response.data.error_messages.map(e => `${e.parameter_name}: ${e.description}`).join('; ') : 
-            "Verifique as credenciais no Render.";
         
-        return res.status(500).json({ ok: false, message: `Falha ao gerar o PIX. Detalhe: ${pagseguroError}` });
+        // Retorna um erro detalhado para o frontend se o PagSeguro rejeitar (4xx)
+        if (error.response && error.response.status >= 400 && error.response.status < 500) {
+            const pagseguroError = error.response.data && error.response.data.error_messages ? 
+                error.response.data.error_messages.map(e => `${e.parameter_name}: ${e.description}`).join('; ') : 
+                JSON.stringify(error.response.data);
+            
+            return res.status(400).json({ ok: false, message: `Erro de Validação PagSeguro: ${pagseguroError}` });
+        }
+        
+        // Retorna um erro 500 interno ou de conexão
+        return res.status(500).json({ ok: false, message: `Falha de Conexão/Interna. Detalhe: ${error.message}` });
     }
 };
 
