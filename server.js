@@ -3,7 +3,7 @@ import cors from 'cors';
 import userRoutes from './src/routes/userRoutes.js'; 
 import './src/db.js';
 import { generatePixCharge, handleWebhook } from './src/controllers/paymentController.js'; 
-import { authMiddleware } from './src/middleware/authMiddleware.js'; 
+import authMiddleware from './src/middleware/authMiddleware.js'; // <<-- CORREÇÃO APLICADA AQUI
 import { getVotes, getCandidates } from './src/controllers/voteController.js'; 
 
 const app = express();
@@ -41,7 +41,7 @@ app.get('/', (req, res) => {
 // Rotas de Usuário (login, cadastro, etc.)
 app.use('/api', userRoutes);
 
-// Rotas de Votos e Placar (A ROTA QUE ESTAVA FALTANDO E CAUSANDO 404/SYNTAX ERROR)
+// Rotas de Votos e Placar
 app.get('/api/votes', getVotes); 
 app.get('/api/candidates', getCandidates); 
 
