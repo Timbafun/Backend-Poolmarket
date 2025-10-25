@@ -10,7 +10,7 @@ const app = express();
 // Lista de origens permitidas (seu domínio principal e o subdomínio do Netlify)
 const allowedOrigins = [
     'https://poolmarket.fun',
-    'https://poolmarket1.netlify.app'
+    'https://poolmarket.netlify.app'
 ]; 
 
 // Configuração do CORS
