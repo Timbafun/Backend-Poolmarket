@@ -11,11 +11,6 @@ const generateToken = (id) => {
 export const registerUser = async (req, res) => {
     const { name, email, cpf, telefone, senha } = req.body;
 
-    // CORREÇÃO: VERIFICAÇÃO ESTREITA DE TODOS OS CAMPOS
-    if (!name || !email || !cpf || !telefone || !senha) {
-        return res.status(400).json({ message: 'Por favor, preencha todos os campos obrigatórios.' });
-    }
-
     try {
         const userExists = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
         
@@ -51,11 +46,6 @@ export const registerUser = async (req, res) => {
 
 export const loginUser = async (req, res) => {
     const { email, senha } = req.body;
-
-    // CORREÇÃO: VERIFICAÇÃO ESTREITA DE LOGIN
-    if (!email || !senha) {
-         return res.status(400).json({ message: 'Por favor, forneça e-mail e senha.' });
-    }
 
     try {
         const userResult = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
