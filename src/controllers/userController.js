@@ -9,7 +9,7 @@ const generateToken = (id) => {
 };
 
 export const registerUser = async (req, res) => {
-    const { name, email, cpf, telefone, senha } = req.body;
+    const { nome, email, cpf, telefone, senha } = req.body;
 
     try {
         const userExists = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
@@ -24,14 +24,14 @@ export const registerUser = async (req, res) => {
         // Colunas corretas do DB: nome, email, cpf, telefone, senha
         const result = await pool.query(
             'INSERT INTO users (nome, email, cpf, telefone, senha, has_voted, voted_for) VALUES ($1, $2, $3, $4, $5, FALSE, NULL) RETURNING id, nome, email',
-            [name, email, cpf, telefone, hashedPassword]
+            [nome, email, cpf, telefone, hashedPassword]
         );
 
         if (result.rows.length > 0) {
             const user = result.rows[0];
             res.status(201).json({
                 id: user.id,
-                name: user.nome,
+                nome: user.nome,
                 email: user.email,
                 token: generateToken(user.id),
             });
@@ -59,7 +59,7 @@ export const loginUser = async (req, res) => {
         if (await bcrypt.compare(senha, user.senha)) {
             res.json({
                 id: user.id,
-                name: user.nome,
+                nome: user.nome,
                 email: user.email,
                 token: generateToken(user.id),
             });
@@ -76,7 +76,7 @@ export const getUserProfile = async (req, res) => {
     if (req.user) {
         res.json({
             id: req.user.id,
-            name: req.user.nome,
+            nome: req.user.nome,
             email: req.user.email,
         });
     } else {
