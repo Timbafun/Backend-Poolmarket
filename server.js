@@ -3,10 +3,10 @@ import cors from 'cors';
 import userRoutes from './src/routes/userRoutes.js'; 
 import './src/db.js';
 import { generatePixCharge, handleWebhook } from './src/controllers/paymentController.js'; 
-// Importação correta do authMiddleware (que exporta 'protect')
+// authMiddleware continua com importação nomeada correta
 import { protect as authMiddleware } from './src/middleware/authMiddleware.js'; 
-// Importação correta do voteController (que exporta 'getVotes' e 'getCandidates')
-import { getVotes, getCandidates } from './src/controllers/voteController.js'; 
+// Nova importação padrão (default) do voteController
+import voteController from './src/controllers/voteController.js'; 
 
 const app = express();
 
@@ -44,9 +44,9 @@ app.get('/', (req, res) => {
 app.use('/api', userRoutes);
 
 // Rotas de Votos e Placar
-// Usando as funções importadas diretamente
-app.get('/api/votes', getVotes); 
-app.get('/api/candidates', getCandidates); 
+// Chamando as funções do objeto voteController
+app.get('/api/votes', voteController.getVotes); 
+app.get('/api/candidates', voteController.getCandidates); 
 
 // Rotas de Pagamento PIX
 app.post('/api/generate-pix', authMiddleware, generatePixCharge);
