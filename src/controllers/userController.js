@@ -1,137 +1,85 @@
-import pool from "../db.js"; 
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken"; 
+import pool from '../db.js';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
 const generateToken = (id) => {
     return jwt.sign({ id }, process.env.JWT_SECRET, {
-        expiresIn: '30d', 
+        expiresIn: '30d',
     });
 };
 
-// CRÍTICO: Mapeia snake_case do DB para camelCase do Frontend
-const mapUserToFrontend = (userDb) => {
-    if (!userDb) return null;
-
-    return {
-        id: userDb.id,
-        nome: userDb.nome,
-        email: userDb.email,
-        telefone: userDb.telefone,
-        cpf: userDb.cpf,
-        hasVoted: userDb.has_voted || false, // CORREÇÃO: has_voted -> hasVoted
-        votedFor: userDb.voted_for || null, 
-        votedAt: userDb.voted_at || null
-    };
-};
-
-/**
- * registerUser - Gera Token e Hasheia Senha (CORRETO)
- */
 export const registerUser = async (req, res) => {
-    const { nome, email, telefone, cpf, senha } = req.body;
+    const { name, email, cpf, telefone, senha } = req.body;
+
     try {
-        const existing = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
-        if (existing.rows.length > 0) { return res.status(400).json({ ok: false, message: "E-mail já cadastrado." }); }
+        const userExists = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
+        
+        if (userExists.rows.length > 0) {
+            return res.status(400).json({ message: 'Usuário já registrado.' });
+        }
+
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(senha, salt);
+
+        // ATENÇÃO: A query usa as colunas conforme a imagem do seu DB
         const result = await pool.query(
-            "INSERT INTO users (nome, email, telefone, cpf, senha, has_voted) VALUES ($1, $2, $3, $4, $5, FALSE) RETURNING *",
-            [nome, email, telefone, cpf, hashedPassword] 
+            'INSERT INTO users (name, email, cpf, telefone, senha, has_voted, voted_for) VALUES ($1, $2, $3, $4, $5, FALSE, NULL) RETURNING id, name, email',
+            [name, email, cpf, telefone, hashedPassword]
         );
-        const user = result.rows[0];
-        const frontendUser = mapUserToFrontend(user);
-        const token = generateToken(user.id); 
-        res.json({ ok: true, user: { ...frontendUser, token } }); 
-    } catch (err) {
-        console.error("Erro no registerUser:", err);
-        res.status(500).json({ ok: false, message: "Erro no servidor." });
-    }
-};
 
-/**
- * loginUser - Resolve compatibilidade de senha e retorna Token (CORRETO)
- */
-export const loginUser = async (req, res) => {
-    try {
-        const rawEmail = req.body.email || req.body.emailLogin || req.body.userEmail || req.body.username || null;
-        const rawCpf = req.body.cpf || req.body.CPF || req.body.cpfLogin || null;
-        const rawSenha = req.body.senha || req.body.password || req.body.senhaLogin || req.body.pass || null;
-        if ((!rawEmail && !rawCpf) || !rawSenha) { return res.status(400).json({ ok: false, message: "Email/CPF e senha são obrigatórios." }); }
-        const email = rawEmail ? String(rawEmail).trim().toLowerCase() : null;
-        const cpf = rawCpf ? String(rawCpf).replace(/\D/g, "").trim() : null;
-        const senha = String(rawSenha);
-        let result;
-        if (email) { result = await pool.query("SELECT * FROM users WHERE LOWER(email) = LOWER($1)", [email]); }
-        if ((!result || result.rows.length === 0) && cpf) { result = await pool.query("SELECT * FROM users WHERE regexp_replace(cpf, '\\\\D','','g') = $1", [cpf]); }
-        if (!result || result.rows.length === 0) { return res.status(401).json({ ok: false, message: "Credenciais inválidas." }); }
-
-        const user = result.rows[0];
-        let senhaCorreta = false;
-        
-        // CORREÇÃO CRÍTICA: Prioriza texto puro para usuários antigos, depois tenta bcrypt
-        if (user.senha === senha) {
-            senhaCorreta = true;
+        if (result.rows.length > 0) {
+            const user = result.rows[0];
+            res.status(201).json({
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                token: generateToken(user.id),
+            });
         } else {
-            try {
-                senhaCorreta = await bcrypt.compare(senha, user.senha);
-            } catch (err) {
-                senhaCorreta = false;
-            }
+            res.status(400).json({ message: 'Dados inválidos.' });
         }
-        if (!senhaCorreta) { return res.status(401).json({ ok: false, message: "Credenciais inválidas." }); }
-
-        const frontendUser = mapUserToFrontend(user);
-        const token = generateToken(user.id); 
-        return res.json({ ok: true, user: { ...frontendUser, token } }); 
-    } catch (err) {
-        console.error("Erro no loginUser:", err);
-        return res.status(500).json({ ok: false, message: "Erro no servidor." });
+    } catch (error) {
+        console.error("ERRO NO CADASTRO:", error.message);
+        res.status(500).json({ message: 'Erro interno do servidor no cadastro.' });
     }
 };
 
-/**
- * castVote - Rota protegida (CORRETO)
- */
-export const castVote = async (req, res) => {
-    const userId = req.user.id; 
-    const { candidate } = req.body; 
-
-    if (!candidate || (candidate !== 'lula' && candidate !== 'bolsonaro')) {
-        return res.status(400).json({ ok: false, message: "Candidato inválido." });
-    }
+export const loginUser = async (req, res) => {
+    const { email, senha } = req.body;
 
     try {
-        const userResult = await pool.query(
-            "SELECT voted_for FROM users WHERE id = $1",
-            [userId]
-        );
+        const userResult = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
 
-        if (userResult.rows.length === 0 || userResult.rows[0].voted_for) {
-            return res.status(400).json({ ok: false, message: "Você já votou." });
+        if (userResult.rows.length === 0) {
+            return res.status(401).json({ message: 'Credenciais inválidas.' });
         }
 
-        await pool.query(
-            "UPDATE users SET voted_for = $1, has_voted = TRUE, voted_at = NOW() WHERE id = $2",
-            [candidate, userId]
-        );
-        
-        const updatedUserResult = await pool.query(
-            "SELECT * FROM users WHERE id = $1",
-            [userId]
-        );
-        const updatedUser = updatedUserResult.rows[0];
+        const user = userResult.rows[0];
 
-        const frontendUser = mapUserToFrontend(updatedUser);
-        const token = generateToken(updatedUser.id);
+        if (await bcrypt.compare(senha, user.senha)) {
+            res.json({
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                token: generateToken(user.id),
+            });
+        } else {
+            res.status(401).json({ message: 'Credenciais inválidas.' });
+        }
+    } catch (error) {
+        console.error("ERRO NO LOGIN:", error.message);
+        res.status(500).json({ message: 'Erro interno do servidor no login.' });
+    }
+};
 
-        return res.json({ 
-            ok: true, 
-            message: "Voto registrado com sucesso.",
-            user: { ...frontendUser, token }
+export const getUserProfile = async (req, res) => {
+    if (req.user) {
+        res.json({
+            id: req.user.id,
+            name: req.user.name,
+            email: req.user.email,
         });
-
-    } catch (err) {
-        console.error("Erro no castVote:", err);
-        return res.status(500).json({ ok: false, message: "Erro no servidor." });
+    } else {
+        res.status(404).json({ message: 'Usuário não encontrado.' });
     }
 };
