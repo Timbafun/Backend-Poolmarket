@@ -72,7 +72,7 @@ export const generatePixCharge = async (req, res) => {
             return res.status(200).json({ 
                 ok: true, 
                 message: "Transação pendente já existe.",
-                qrCodeUrl: existingTransaction.rows[0].qr_code_base66,
+                qrCodeUrl: existingTransaction.rows[0].qr_code_base64,
                 pixCode: existingTransaction.rows[0].qr_code_pix
             });
         }
@@ -159,4 +159,32 @@ export const handleWebhook = async (req, res) => {
         
         if (orderStatus === 'PAID') {
             const transactionUpdate = await pool.query(
-                "UPDATE transactions SET status = 'PAID' WHERE payment_id = $1 AND status != 'PAID
+                "UPDATE transactions SET status = 'PAID' WHERE payment_id = $1 AND status != 'PAID' RETURNING user_id, candidate_voted",
+                [orderId]
+            );
+
+            if (transactionUpdate.rows.length === 0) {
+                return res.status(200).send("Transação já paga ou não encontrada no DB.");
+            }
+
+            const { user_id, candidate_voted } = transactionUpdate.rows[0];
+
+            await pool.query(
+                `UPDATE users SET has_voted = TRUE, voted_for = $1, voted_at = NOW() WHERE id = $2`,
+                [candidate_voted, user_id]
+            );
+            
+            return res.status(200).send("Notificação recebida e voto finalizado com sucesso.");
+            
+        } else if (orderStatus === 'CANCELED' || orderStatus === 'EXPIRED') {
+             await pool.query("UPDATE transactions SET status = $1 WHERE payment_id = $2", [orderStatus, orderId]);
+             return res.status(200).send("Status da transação atualizado para não pago.");
+        }
+        
+        return res.status(200).send("Status sem necessidade de ação.");
+
+    } catch (error) {
+        console.error("Erro no Webhook ao processar PagSeguro:", error.response ? error.response.data : error.message);
+        return res.status(500).send("Erro interno ao processar webhook.");
+    }
+};
