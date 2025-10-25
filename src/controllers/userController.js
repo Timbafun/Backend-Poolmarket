@@ -21,8 +21,9 @@ export const registerUser = async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(senha, salt);
 
+        // CORREÇÃO CRÍTICA: 'name' mudado para 'nome'
         const result = await pool.query(
-            'INSERT INTO users (name, email, cpf, telefone, senha, has_voted, voted_for) VALUES ($1, $2, $3, $4, $5, FALSE, NULL) RETURNING id, name, email',
+            'INSERT INTO users (nome, email, cpf, telefone, senha, has_voted, voted_for) VALUES ($1, $2, $3, $4, $5, FALSE, NULL) RETURNING id, nome, email',
             [name, email, cpf, telefone, hashedPassword]
         );
 
@@ -30,7 +31,7 @@ export const registerUser = async (req, res) => {
             const user = result.rows[0];
             res.status(201).json({
                 id: user.id,
-                name: user.name,
+                name: user.nome, // Usa 'nome' para o objeto JSON de resposta
                 email: user.email,
                 token: generateToken(user.id),
             });
@@ -58,7 +59,7 @@ export const loginUser = async (req, res) => {
         if (await bcrypt.compare(senha, user.senha)) {
             res.json({
                 id: user.id,
-                name: user.name,
+                name: user.nome, // Usa 'nome' para o objeto JSON de resposta
                 email: user.email,
                 token: generateToken(user.id),
             });
@@ -75,7 +76,7 @@ export const getUserProfile = async (req, res) => {
     if (req.user) {
         res.json({
             id: req.user.id,
-            name: req.user.name,
+            name: req.user.nome, // Usa 'nome' para o objeto JSON de resposta
             email: req.user.email,
         });
     } else {
