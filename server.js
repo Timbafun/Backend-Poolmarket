@@ -3,7 +3,8 @@ import cors from 'cors';
 import userRoutes from './src/routes/userRoutes.js'; 
 import './src/db.js';
 import { generatePixCharge, handleWebhook } from './src/controllers/paymentController.js'; 
-import authMiddleware from './src/middleware/authMiddleware.js'; // <<-- CORREÇÃO APLICADA AQUI
+// CORREÇÃO FINAL: Importa o "protect" (nome real da exportação) e o renomeia para "authMiddleware" (nome usado nas rotas)
+import { protect as authMiddleware } from './src/middleware/authMiddleware.js'; 
 import { getVotes, getCandidates } from './src/controllers/voteController.js'; 
 
 const app = express();
