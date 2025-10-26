@@ -52,6 +52,9 @@ export const registerUser = async (req, res) => {
 
 export const loginUser = async (req, res) => {
     const { email, senha } = req.body;
+    
+    // CORREÇÃO CRÍTICA: Remove espaços em branco (trim) da senha do Login
+    const cleanedSenha = senha ? String(senha).trim() : '';
 
     try {
         const userResult = await pool.query('SELECT id, nome, email, senha, has_voted, voted_for FROM users WHERE email = $1', [email]);
@@ -62,7 +65,8 @@ export const loginUser = async (req, res) => {
 
         const user = userResult.rows[0];
 
-        if (await bcrypt.compare(senha, user.senha)) {
+        // Compara a senha limpa (sem espaços) com a senha do banco de dados
+        if (await bcrypt.compare(cleanedSenha, user.senha)) {
             res.json({
                 id: user.id,
                 name: user.nome,
