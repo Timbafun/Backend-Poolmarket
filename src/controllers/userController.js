@@ -10,6 +10,10 @@ const generateToken = (id) => {
 
 export const registerUser = async (req, res) => {
     const { nome, email, cpf, telefone, senha } = req.body;
+    
+    if (!nome) {
+        return res.status(400).json({ message: 'O campo Nome é obrigatório.' });
+    }
 
     try {
         const userExists = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
@@ -21,19 +25,21 @@ export const registerUser = async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(senha, salt);
 
-        // Colunas corretas do DB: nome, email, cpf, telefone, senha
         const result = await pool.query(
-            'INSERT INTO users (nome, email, cpf, telefone, senha, has_voted, voted_for) VALUES ($1, $2, $3, $4, $5, FALSE, NULL) RETURNING id, nome, email',
+            'INSERT INTO users (nome, email, cpf, telefone, senha, has_voted, voted_for) VALUES ($1, $2, $3, $4, $5, FALSE, NULL) RETURNING id, nome, email, has_voted, voted_for',
             [nome, email, cpf, telefone, hashedPassword]
         );
 
         if (result.rows.length > 0) {
             const user = result.rows[0];
             res.status(201).json({
+                message: 'Cadastro efetuado com sucesso!',
                 id: user.id,
-                nome: user.nome,
+                name: user.nome,
                 email: user.email,
                 token: generateToken(user.id),
+                hasVoted: user.has_voted,
+                votedFor: user.voted_for,
             });
         } else {
             res.status(400).json({ message: 'Dados inválidos.' });
@@ -48,7 +54,7 @@ export const loginUser = async (req, res) => {
     const { email, senha } = req.body;
 
     try {
-        const userResult = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+        const userResult = await pool.query('SELECT id, nome, email, senha, has_voted, voted_for FROM users WHERE email = $1', [email]);
 
         if (userResult.rows.length === 0) {
             return res.status(401).json({ message: 'Credenciais inválidas.' });
@@ -59,9 +65,11 @@ export const loginUser = async (req, res) => {
         if (await bcrypt.compare(senha, user.senha)) {
             res.json({
                 id: user.id,
-                nome: user.nome,
+                name: user.nome,
                 email: user.email,
                 token: generateToken(user.id),
+                hasVoted: user.has_voted,
+                votedFor: user.voted_for,
             });
         } else {
             res.status(401).json({ message: 'Credenciais inválidas.' });
@@ -76,7 +84,7 @@ export const getUserProfile = async (req, res) => {
     if (req.user) {
         res.json({
             id: req.user.id,
-            nome: req.user.nome,
+            name: req.user.nome,
             email: req.user.email,
         });
     } else {
